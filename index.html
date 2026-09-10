@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MORSE 加密工具</title>
+<style>
+body{
+  max-width:640px;
+  margin:0 auto;
+  padding:24px 16px 60px;
+  font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  line-height:1.6;
+  color:#111;
+}
+h1{ font-size:20px; margin:0 0 4px; }
+.sub{ color:#666; font-size:14px; margin:0 0 24px; }
+h2{ font-size:16px; margin:28px 0 8px; }
+label{ display:block; font-size:13px; color:#555; margin-bottom:4px; }
+textarea{
+  width:100%;
+  box-sizing:border-box;
+  padding:10px 12px;
+  font-size:15px;
+  font-family:inherit;
+  border:1px solid #bbb;
+  border-radius:8px;
+  resize:vertical;
+}
+textarea[readonly]{ background:#f6f6f6; color:#000; }
+.mono{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+.row{ margin-bottom:14px; }
+.note{ color:#888; font-size:12px; margin-top:6px; }
+button{
+  padding:8px 14px;
+  font-size:14px;
+  border:1px solid #333;
+  background:#fff;
+  border-radius:8px;
+  cursor:pointer;
+}
+button:active{ background:#eee; }
+hr{ border:none; border-top:1px solid #eee; margin:32px 0; }
+</style>
+</head>
+<body>
+
+<h1>MORSE 加密工具 · 極簡版</h1>
+<p class="sub">英文 ↔ 二進位。無動畫、無樣式，只留功能。</p>
+
+<h2>加密</h2>
+<div class="row">
+  <label for="plain">輸入英文（區分大小寫，可含空格與標點）</label>
+  <textarea id="plain" rows="2"
+    autocapitalize="off" autocorrect="off"
+    autocomplete="off" spellcheck="false"
+    placeholder="Hello, World!"></textarea>
+</div>
+<div class="row">
+  <label for="enc">二進位結果</label>
+  <textarea id="enc" class="mono" rows="3" readonly></textarea>
+  <button onclick="copyEnc()">複製</button>
+</div>
+
+<hr>
+
+<h2>解密</h2>
+<div class="row">
+  <label for="cipher">貼上二進位（用空格分隔）</label>
+  <textarea id="cipher" class="mono" rows="3"
+    inputmode="numeric" autocapitalize="off" autocorrect="off"
+    autocomplete="off" spellcheck="false"
+    placeholder="10001010111 1011011 ..."></textarea>
+</div>
+<div class="row">
+  <label for="dec">還原結果</label>
+  <textarea id="dec" rows="2" readonly></textarea>
+</div>
+
+<p class="note">
+※ 這是給學習與趣味用的編碼，不是真正的加密。規則公開可逆，別拿來保護重要機密。
+</p>
+
+<script>
+// ===== 編解碼核心（與正式版一致）=====
+const morse={
+A:".-",B:"-...",C:"-.-.",D:"-..",E:".",F:"..-.",G:"--.",H:"....",
+I:"..",J:".---",K:"-.-",L:".-..",M:"--",N:"-.",O:"---",P:".--.",
+Q:"--.-",R:".-.",S:"...",T:"-",U:"..-",V:"...-",W:".--",X:"-..-",
+Y:"-.--",Z:"--.."
+};
+
+// 小寫在數字前加 9；空格與標點用 7 開頭的專屬編號
+const LOWER_MARK="9";
+const EXTRA={
+" ":"7", ".":"71", ",":"72", "?":"73", "!":"74", "'":"75",
+"\"":"76", ":":"77", ";":"78", "-":"79", "(":"710", ")":"711",
+"/":"712", "@":"713"
+};
+
+function toDigits(letter){
+  return morse[letter].replaceAll(".",1).replaceAll("-",3);
+}
+
+// 反查表
+const reverse={};
+for(const x in morse){
+  reverse[parseInt(toDigits(x))]=x;
+  reverse[parseInt(LOWER_MARK+toDigits(x))]=x.toLowerCase();
+}
+for(const ch in EXTRA){
+  reverse[parseInt(EXTRA[ch])]=ch;
+}
+
+function encode(text){
+  const out=[];
+  for(const c of text){
+    if(EXTRA[c]){
+      out.push(parseInt(EXTRA[c]).toString(2));
+      continue;
+    }
+    const upper=c.toUpperCase();
+    if(morse[upper]){
+      let num=toDigits(upper);
+      if(c!==upper) num=LOWER_MARK+num;
+      out.push(parseInt(num).toString(2));
+    }
+  }
+  return out.join(" ");
+}
+
+function decode(bin){
+  return bin.trim().split(/\s+/).map(b=>{
+    if(!b) return "";
+    const v=reverse[parseInt(b,2)];
+    return v===undefined ? "" : v;
+  }).join("");
+}
+
+// ===== 綁定 =====
+const plain=document.getElementById("plain");
+const enc=document.getElementById("enc");
+const cipher=document.getElementById("cipher");
+const dec=document.getElementById("dec");
+
+plain.oninput=()=>{ enc.value=encode(plain.value); };
+cipher.oninput=()=>{ dec.value=decode(cipher.value); };
+
+async function copyEnc(){
+  if(!enc.value){ return; }
+  try{
+    await navigator.clipboard.writeText(enc.value);
+  }catch(e){
+    enc.select();
+    document.execCommand("copy");
+  }
+}
+</script>
+
+</body>
+</html>
